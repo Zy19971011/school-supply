@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>学校后勤 · 物管系统</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* ===== 全局重置 & 变量 ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        :root {
+            --primary: #4f46e5; --primary-light: #818cf8; --primary-dark: #3730a3;
+            --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+            --gray-50: #f8fafc; --gray-100: #f1f5f9; --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1; --gray-500: #64748b; --gray-700: #334155; --gray-900: #0f172a;
+            --shadow: 0 4px 20px rgba(0,0,0,0.06); --radius: 16px; --radius-sm: 10px;
+        }
+        body { background: var(--gray-50); color: var(--gray-900); min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 0 0 80px 0; }
+        #app { max-width: 480px; width: 100%; background: white; min-height: 100vh; box-shadow: 0 0 40px rgba(0,0,0,0.04); position: relative; padding-bottom: 70px; }
+
+        /* ===== 公开申领 ===== */
+        #public-page { padding: 24px 20px 40px; display: block; }
+        #public-page .logo-area { text-align: center; margin-bottom: 28px; padding-top: 16px; }
+        #public-page .logo-area h1 { font-size: 26px; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+        #public-page .logo-area p { color: var(--gray-500); font-size: 14px; margin-top: 4px; }
+        #public-page .apply-card { background: white; border-radius: var(--radius); padding: 24px 20px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); }
+        #public-page .apply-card .form-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+        #public-page .apply-card .form-title i { color: var(--primary); }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 5px; color: var(--gray-700); }
+        .form-group label .required { color: var(--danger); margin-left: 2px; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 12px 14px; border: 1.5px solid var(--gray-200); border-radius: var(--radius-sm);
+            font-size: 16px; background: var(--gray-50); transition: 0.2s; appearance: none; -webkit-appearance: none;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(79,70,229,0.1);
+        }
+        .form-group textarea { resize: vertical; min-height: 60px; }
+
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: var(--radius-sm); font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; touch-action: manipulation; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:active { transform: scale(0.96); background: var(--primary-dark); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:active { background: #16a34a; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-danger:active { background: #dc2626; }
+        .btn-outline { background: transparent; border: 1.5px solid var(--gray-300); color: var(--gray-700); }
+        .btn-outline:active { background: var(--gray-100); }
+        .btn-sm { padding: 8px 14px; font-size: 14px; width: auto; }
+
+        .public-footer { text-align: center; margin-top: 24px; color: var(--gray-500); font-size: 14px; }
+        .public-footer button { background: none; border: none; color: var(--primary); font-weight: 500; cursor: pointer; padding: 4px 8px; font-size: inherit; }
+        .public-footer button:active { opacity: 0.6; }
+        #public-message { margin-top: 16px; padding: 12px; border-radius: var(--radius-sm); text-align: center; display: none; }
+        #public-message.success { display: block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        #public-message.error { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+
+        /* ===== 管理后台 ===== */
+        #admin-page { display: none; }
+
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); display: none; justify-content: center; align-items: center; z-index: 999; padding: 20px; }
+        #login-overlay.active { display: flex; }
+        .login-box { background: white; border-radius: var(--radius); padding: 32px 24px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+        .login-box h2 { text-align: center; margin-bottom: 24px; font-size: 22px; color: var(--gray-900); }
+        .login-box h2 i { color: var(--primary); margin-right: 8px; }
+        .login-box .form-group { margin-bottom: 16px; }
+        .login-box .btn { margin-top: 8px; }
+        .login-error { color: var(--danger); font-size: 14px; text-align: center; margin-top: 12px; display: none; }
+
+        .admin-header { background: white; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,0.92); backdrop-filter: blur(4px); }
+        .admin-header .brand { font-weight: 700; font-size: 18px; color: var(--primary); }
+        .admin-header .brand i { margin-right: 6px; }
+        .admin-header .user-actions { display: flex; gap: 12px; align-items: center; }
+        .admin-header .user-actions button { background: none; border: none; font-size: 20px; color: var(--gray-500); cursor: pointer; padding: 4px; }
+        .admin-header .user-actions button:active { color: var(--gray-900); }
+
+        .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); max-width: 480px; width: 100%; background: white; border-top: 1px solid var(--gray-200); display: flex; justify-content: space-around; padding: 8px 0 12px; z-index: 100; box-shadow: 0 -4px 20px rgba(0,0,0,0.04); }
+        .bottom-nav .nav-item { display: flex; flex-direction: column; align-items: center; font-size: 12px; color: var(--gray-500); background: none; border: none; padding: 4px 12px; cursor: pointer; position: relative; gap: 2px; }
+        .bottom-nav .nav-item i { font-size: 22px; }
+        .bottom-nav .nav-item.active { color: var(--primary); font-weight: 500; }
+        .bottom-nav .nav-item .nav-badge { position: absolute; top: -2px; right: 2px; background: var(--danger); color: white; border-radius: 50%; padding: 1px 6px; font-size: 10px; font-weight: 700; }
+
+        .admin-content { padding: 16px 16px 80px; }
+        .page-section { display: none; animation: fadeUp 0.25s ease; }
+        .page-section.active { display: block; }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: white; border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow); border: 1px solid var(--gray-200); margin-bottom: 16px; }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; }
+        .card-title .action-link { font-size: 14px; font-weight: 500; color: var(--primary); background: none; border: none; cursor: pointer; padding: 4px 0; }
+
+        .stat-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        .stat-item { background: var(--gray-50); border-radius: var(--radius-sm); padding: 14px 8px; text-align: center; }
+        .stat-item .num { font-size: 26px; font-weight: 700; color: var(--gray-900); }
+        .stat-item .label { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+        .stat-item.danger .num { color: var(--danger); }
+        .stat-item.warning .num { color: var(--warning); }
+        .stat-item.primary .num { color: var(--primary); }
+
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--gray-100); }
+        .list-item:last-child { border-bottom: none; }
+        .list-item .info .name { font-weight: 500; }
+        .list-item .info .desc { font-size: 13px; color: var(--gray-500); }
+        .list-item .actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+        .tag { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .tag-pending { background: #fef3c7; color: #92400e; }
+        .tag-approved { background: #dcfce7; color: #166534; }
+        .tag-rejected { background: #fee2e2; color: #991b1b; }
+        .tag-low { background: #fee2e2; color: #991b1b; }
+        .tag-normal { background: #dcfce7; color: #166534; }
+
+        .empty-state { text-align: center; padding: 32px 0; color: var(--gray-500); }
+        .empty-state i { font-size: 40px; margin-bottom: 12px; opacity: 0.3; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); display: none; justify-content: center; align-items: flex-start; padding: 40px 16px; z-index: 200; overflow-y: auto; }
+        .modal-overlay.active { display: flex; }
+        .modal-box { background: white; border-radius: var(--radius); padding: 24px 20px; width: 100%; max-width: 440px; margin-top: 20px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: slideUp 0.25s ease; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .modal-box .modal-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .modal-box .modal-title .close-btn { background: none; border: none; font-size: 24px; color: var(--gray-500); cursor: pointer; padding: 0 8px; }
+        .modal-box .form-group:last-child { margin-bottom: 0; }
+        .modal-box .btn-group { display: flex; gap: 10px; margin-top: 20px; }
+        .modal-box .btn-group .btn { flex: 1; }
+
+        .field-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--gray-100); padding: 6px 12px; border-radius: 20px; margin: 4px 6px 4px 0; font-size: 14px; }
+        .field-tag .del-field { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 14px; padding: 0 4px; }
+        .flex-row { display: flex; gap: 10px; align-items: center; }
+        .flex-row .form-group { flex: 1; margin-bottom: 0; }
+        .text-muted { color: var(--gray-500); font-size: 13px; }
+
+        .stock-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .stock-title { font-size: 16px; font-weight: 600; }
+        .add-btn { width: 12.5%; min-width: 50px; background-color: var(--success); color: white; border: none; border-radius: 6px; padding: 8px 0; font-size: 16px; text-align: center; box-sizing: border-box; }
+        .stock-table { border: 1px solid var(--gray-200); border-radius: 10px; overflow: hidden; }
+        .stock-row { display: flex; justify-content: space-between; align-items: stretch; padding: 12px 16px; border-bottom: 1px solid var(--gray-200); background: white; }
+        .stock-row:last-child { border-bottom: none; }
+        .stock-info { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+        .stock-name-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+        .stock-name { font-size: 17px; font-weight: 600; color: var(--gray-900); }
+        .stock-quantity { font-size: 15px; color: var(--gray-700); }
+        .stock-actions-vertical { display: flex; flex-direction: column; gap: 8px; width: 90px; flex-shrink: 0; margin-left: 12px; justify-content: center; }
+        .action-btn { width: 100%; height: 36px; font-size: 14px; padding: 0; display: flex; align-items: center; justify-content: center; border-radius: 6px; box-sizing: border-box; }
+
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+        .application-item { background: white; border-radius: 12px; padding: 14px; border: 1px solid var(--gray-200); margin-bottom: 12px; }
+        .app-header { display: flex; justify-content: space-between; align-items: flex-start; }
+        .app-name { font-weight: 600; }
+        .app-detail { font-size: 14px; margin: 4px 0; }
+        .app-desc { font-size: 13px; color: var(--gray-500); }
+        .app-meta { font-size: 12px; color: var(--gray-500); margin-top: 4px; }
+        .app-status { text-align: right; flex-shrink: 0; margin-left: 10px; }
+        .app-actions { display: flex; gap: 8px; margin-top: 12px; }
+        .app-actions .btn { flex: 1; }
+
+        .field-group { margin-top: 12px; }
+        .field-group-title { font-weight: 600; font-size: 15px; margin-bottom: 6px; }
+        .field-input { flex: 1; padding: 0 12px; height: 44px; border: 1.5px solid var(--gray-200); border-radius: 10px; font-size: 14px; background: var(--gray-50); box-sizing: border-box; }
+
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
+        @media (max-width: 480px) { .stat-grid { grid-template-columns: repeat(3,1fr); gap: 6px; } .stat-item .num { font-size: 22px; } }
+        input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- ===== 公开申领页面 ===== -->
+    <div id="public-page">
+        <div class="logo-area">
+            <h1><i class="fas fa-boxes" style="color:var(--primary);"></i> 学校物资申领</h1>
+            <p>请填写以下信息，提交后等待管理员审批</p>
+        </div>
+        <div class="apply-card">
+            <div class="form-title"><i class="fas fa-pen"></i> 申领单</div>
+            <form id="publicApplyForm" onsubmit="return false;">
+                <div class="form-group"><label>申领物品 <span class="required">*</span></label><select id="pubItem" required><option value="">— 请选择 —</option></select></div>
+                <div class="form-group"><label>申领数量 <span class="required">*</span></label><input type="number" id="pubQty" min="1" step="1" required placeholder="请输入数量"></div>
+                <div class="form-group"><label>申领人姓名 <span class="required">*</span></label><input type="text" id="pubName" required placeholder="例如：张三"></div>
+                <div class="form-group"><label>年级 / 班级</label><input type="text" id="pubClass" placeholder="例如：高二(3)班"></div>
+                <div class="form-group"><label>用途说明 <span class="required">*</span></label><textarea id="pubPurpose" required placeholder="请简要说明用途"></textarea></div>
+                <div class="form-group"><label>联系电话</label><input type="tel" id="pubPhone" placeholder="方便联系"></div>
+                <div id="pubDynamicFields"></div>
+                <button type="submit" class="btn btn-primary" id="pubSubmitBtn"><i class="fas fa-paper-plane"></i> 提交申领</button>
+                <div id="public-message"></div>
+            </form>
+        </div>
+        <div class="public-footer">
+            <button type="button" id="showAdminLoginBtn"><i class="fas fa-user-shield"></i> 管理员登录</button>
+        </div>
+    </div>
+
+    <!-- ===== 管理后台 ===== -->
+    <div id="admin-page">
+        <div class="admin-header">
+            <div class="brand"><i class="fas fa-school"></i> 后勤管理</div>
+            <div class="user-actions">
+                <span style="font-size:14px;color:var(--gray-500);" id="adminName">管理员</span>
+                <button id="logoutBtn" title="退出登录" style="font-size:16px;display:flex;align-items:center;gap:4px;"><i class="fas fa-sign-out-alt"></i> 退出</button>
+            </div>
+        </div>
+        <div class="admin-content">
+            <!-- 仪表盘 -->
+            <div class="page-section active" id="page-dashboard">
+                <div class="stat-grid">
+                    <div class="stat-item primary"><div class="num" id="dashItems">0</div><div class="label">物品总数</div></div>
+                    <div class="stat-item warning"><div class="num" id="dashPending">0</div><div class="label">待审批</div></div>
+                    <div class="stat-item danger"><div class="num" id="dashLow">0</div><div class="label">低库存</div></div>
+                </div>
+                <div class="card"><div class="card-title">📋 库存预警 <span class="text-muted" style="font-weight:400;font-size:13px;">低于下限</span></div><div id="dashLowList"><div class="empty-state"><i class="fas fa-check-circle" style="color:var(--success);"></i><br>一切正常</div></div></div>
+                <div class="card"><div class="card-title">⏳ 最新待审批</div><div id="dashRecentPending"><div class="empty-state">暂无待审批</div></div></div>
+            </div>
+
+            <!-- 库存管理 -->
+            <div class="page-section" id="page-items">
+                <div class="card">
+                    <div class="card-title stock-header">
+                        <span class="stock-title">📦 库存列表</span>
+                        <button class="btn btn-success add-btn" id="addItemBtn">新增</button>
+                    </div>
+                    <div id="itemListContainer"><div class="empty-state"><i class="fas fa-box-open"></i><br>暂无物品</div></div>
+                </div>
+            </div>
+
+            <!-- 入库 -->
+            <div class="page-section" id="page-stockin">
+                <div class="card">
+                    <div class="card-title">📥 新增入库 <button class="action-link" id="exportInBtn"><i class="fas fa-file-download"></i> 导出入库记录</button></div>
+                    <form id="stockInForm" onsubmit="return false;">
+                        <div class="form-group"><label>物品 <span class="required">*</span></label><select id="inItem" required><option value="">— 请选择 —</option></select></div>
+                        <div class="form-group"><label>入库数量 <span class="required">*</span></label><input type="number" id="inQty" min="1" step="1" required placeholder="数量"></div>
+                        <div class="form-group"><label>供应商</label><input type="text" id="inSupplier" placeholder="供应商名称"></div>
+                        <div class="form-group"><label>入库时间</label><input type="datetime-local" id="inDate"></div>
+                        <div class="form-group"><label>经手人</label><input type="text" id="inHandler" placeholder="经手人姓名"></div>
+                        <div class="form-group"><label>备注</label><input type="text" id="inNote" placeholder="可选"></div>
+                        <div id="inDynamicFields"></div>
+                        <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> 确认入库</button>
+                    </form>
+                </div>
+                <div class="card"><div class="card-title">📋 最近入库记录</div><div id="inRecentLogs"><div class="empty-state">暂无记录</div></div></div>
+            </div>
+
+            <!-- 审批 -->
+            <div class="page-section" id="page-approvals">
+                <div class="card">
+                    <div class="card-title"><span><i class="fas fa-clipboard-check"></i> 申领审批</span><button class="action-link" id="exportAppsBtn"><i class="fas fa-file-download"></i> 导出记录</button></div>
+                    <div style="display:flex;gap:8px;margin-bottom:16px;">
+                        <button class="btn btn-sm btn-primary" id="approveTabPending" style="flex:1;">待审批 <span class="badge" id="pendingBadge" style="background:var(--warning);color:#000;">0</span></button>
+                        <button class="btn btn-sm btn-outline" id="approveTabHistory" style="flex:1;">已处理</button>
+                    </div>
+                    <div id="approvalList"><div class="empty-state">暂无待审批申领</div></div>
+                </div>
+            </div>
+
+            <!-- 设置 -->
+            <div class="page-section" id="page-settings">
+                <div class="card" style="border:2px solid var(--primary);background:#f0f0ff;">
+                    <div class="card-title" style="justify-content:center;">
+                        <button class="btn btn-primary" id="goToPublicBtn" style="width:100%;font-size:18px;padding:14px;"><i class="fas fa-home"></i> 返回申领页面</button>
+                    </div>
+                    <div class="text-muted" style="display:block;text-align:center;margin-top:6px;">切换到公开申领表单，继续接收申领</div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-key"></i> 修改密码</div>
+                    <form id="changePwdForm" onsubmit="return false;">
+                        <div class="form-group"><label>当前密码</label><input type="password" id="oldPwd" placeholder="当前密码"></div>
+                        <div class="form-group"><label>新密码</label><input type="password" id="newPwd" placeholder="新密码 (至少4位)"></div>
+                        <button type="submit" class="btn btn-primary btn-sm">更新密码</button>
+                        <div id="pwdMsg" style="margin-top:8px;font-size:14px;"></div>
+                    </form>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-cog"></i> 自定义字段管理</div>
+                    <p class="text-muted" style="margin-bottom:12px;">为【物品】【入库】【出库/申领】增加额外字段，历史数据不受影响。</p>
+                    <div style="display:flex;flex-direction:column;gap:16px;">
+                        <div><div style="font-weight:600;font-size:15px;margin-bottom:6px;">📦 物品字段</div><div id="fieldListItems" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                            <div class="flex-row"><div class="form-group" style="flex:1;margin-bottom:0;"><input type="text" id="newFieldItem" placeholder="字段名 (如: 品牌)"></div><button class="btn btn-sm btn-primary" id="addFieldItemBtn">添加</button></div></div>
+                        <div><div style="font-weight:600;font-size:15px;margin-bottom:6px;">📥 入库字段</div><div id="fieldListIn" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                            <div class="flex-row"><div class="form-group" style="flex:1;margin-bottom:0;"><input type="text" id="newFieldIn" placeholder="字段名 (如: 发票号)"></div><button class="btn btn-sm btn-primary" id="addFieldInBtn">添加</button></div></div>
+                        <div><div style="font-weight:600;font-size:15px;margin-bottom:6px;">📤 申领/出库字段</div><div id="fieldListOut" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+                            <div class="flex-row"><div class="form-group" style="flex:1;margin-bottom:0;"><input type="text" id="newFieldOut" placeholder="字段名 (如: 归还日期)"></div><button class="btn btn-sm btn-primary" id="addFieldOutBtn">添加</button></div></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title"><i class="fas fa-cloud-upload-alt"></i> 云端接口预留</div>
+                    <p class="text-muted" style="margin-bottom:12px;">配置后点击同步，系统将调用您提供的API接口（当前为预留占位）。</p>
+                    <div class="form-group"><label>API 地址</label><input type="text" id="cloudUrl" placeholder="https://your-api.com/sync"></div>
+                    <div class="form-group"><label>API Key</label><input type="text" id="cloudKey" placeholder="your-api-key"></div>
+                    <button class="btn btn-outline btn-sm" id="cloudSyncBtn"><i class="fas fa-sync"></i> 测试同步 (占位)</button>
+                    <div id="cloudMsg" style="margin-top:8px;font-size:14px;"></div>
+                </div>
+                <div class="card" style="text-align:center;color:var(--gray-500);font-size:13px;">
+                    <i class="fas fa-database"></i> 数据存储于本地浏览器 (localStorage) · 清除缓存将丢失数据
+                </div>
+            </div>
+        </div>
+
+        <!-- 底部导航 -->
+        <div class="bottom-nav" id="adminNav">
+            <button class="nav-item active" data-tab="dashboard"><i class="fas fa-chart-pie"></i><span>概况</span></button>
+            <button class="nav-item" data-tab="items"><i class="fas fa-box"></i><span>库存</span></button>
+            <button class="nav-item" data-tab="stockin"><i class="fas fa-arrow-down"></i><span>入库</span></button>
+            <button class="nav-item" data-tab="approvals"><i class="fas fa-check-double"></i><span>审批</span><span class="nav-badge" id="navPendingBadge">0</span></button>
+            <button class="nav-item" data-tab="settings"><i class="fas fa-sliders-h"></i><span>设置</span></button>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2><i class="fas fa-lock"></i> 管理员登录</h2>
+            <form id="loginForm" onsubmit="return false;">
+                <div class="form-group"><label>密码</label><input type="password" id="loginPwd" placeholder="请输入管理密码" autocomplete="current-password"></div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-sign-in-alt"></i> 登录</button>
+                <div class="login-error" id="loginError">密码错误，请重试</div>
+            </form>
+            <div style="text-align:center;margin-top:16px;font-size:14px;color:var(--gray-500);">
+                <a href="javascript:void(0)" id="closeLoginBtn">取消</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通用模态框 -->
+    <div class="modal-overlay" id="commonModal">
+        <div class="modal-box">
+            <div class="modal-title"><span id="modalTitle">标题</span><button class="close-btn" id="modalCloseBtn">&times;</button></div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ========================================================================
+// 数据层 (DataService)
+// ========================================================================
+const DataService = {
+    _storage: localStorage, _key: 'school_supply_data',
+    _getData() { try { const raw = this._storage.getItem(this._key); if (raw) return JSON.parse(raw); } catch(e){} return null; },
+    _setData(data) { this._storage.setItem(this._key, JSON.stringify(data)); },
+    init() {
+        let data = this._getData();
+        if (!data) {
+            data = { items: [], logs: [], applications: [], settings: { adminPassword: 'admin123', customFields: { item: ['品牌','规格'], in: ['发票号'], out: ['归还日期'] }, cloudConfig: { url: '', key: '' } }, _meta: { version: '1.0' } };
+            this._setData(data);
+        }
+        return data;
+    },
+    load() { return this._getData() || this.init(); },
+    save(data) { this._setData(data); },
+    async syncToCloud(config) { console.warn('[Cloud] 同步占位', config); return new Promise(resolve => { setTimeout(() => { resolve({ success: true, message: '模拟同步成功' }); }, 600); }); }
+};
+
+// ========================================================================
+// 应用主控
+// ========================================================================
+const App = {
+    data: null, currentTab: 'dashboard', isAdmin: false, approvalFilter: 'pending',
+
+    init() {
+        this.data = DataService.load();
+        const cf = this.data.settings.customFields;
+        if (!cf.item || cf.item.length === 0) cf.item = ['品牌','规格'];
+        if (!cf.in || cf.in.length === 0) cf.in = ['发票号'];
+        if (!cf.out || cf.out.length === 0) cf.out = ['归还日期'];
+        DataService.save(this.data);
+        this.renderPublicItems();
+        this.bindPublicEvents();
+        this.bindAdminEvents();
+        this.checkSession();
+        setInterval(() => this.updateBadges(), 10000);
+    },
+
+    checkSession() {
+        const session = sessionStorage.getItem('admin_session');
+        if (session === 'true') { this.isAdmin = true; this.showAdminPanel(); } else { this.isAdmin = false; this.showPublicPanel(); }
+    },
+
+    login(password) {
+        if (password === this.data.settings.adminPassword) {
+            sessionStorage.setItem('admin_session', 'true');
+            this.isAdmin = true; this.showAdminPanel();
+            document.getElementById('login-overlay').classList.remove('active');
+            document.getElementById('loginError').style.display = 'none';
+            return true;
+        } else { document.getElementById('loginError').style.display = 'block'; return false; }
+    },
+
+    logout() {
+        sessionStorage.removeItem('admin_session');
+        this.isAdmin = false; this.showPublicPanel();
+        document.querySelectorAll('#adminNav .nav-item').forEach(el => el.classList.remove('active'));
+        document.querySelector('#adminNav [data-tab="dashboard"]')?.classList.add('active');
+        this.currentTab = 'dashboard';
+    },
+
+    showPublicPanel() {
+        document.getElementById('public-page').style.display = 'block';
+        document.getElementById('admin-page').style.display = 'none';
+        document.getElementById('login-overlay').classList.remove('active');
+        this.renderPublicItems();
+    },
+
+    showAdminPanel() {
+        document.getElementById('public-page').style.display = 'none';
+        document.getElementById('admin-page').style.display = 'block';
+        document.getElementById('login-overlay').classList.remove('active');
+        this.refreshAllAdmin();
+        this.updateBadges();
+    },
+
+    navigate(tab) {
+        this.currentTab = tab;
+        document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
+        document.getElementById('page-' + tab)?.classList.add('active');
+        document.querySelectorAll('#adminNav .nav-item').forEach(el => { el.classList.toggle('active', el.dataset.tab === tab); });
+        switch(tab) {
+            case 'dashboard': this.renderDashboard(); break;
+            case 'items': this.renderItems(); break;
+            case 'stockin': this.renderStockIn(); break;
+            case 'approvals': this.renderApprovals(); break;
+            case 'settings': this.renderSettings(); break;
+        }
+        this.updateBadges();
+    },
+
+    refreshAllAdmin() { this.renderDashboard(); this.renderItems(); this.renderStockIn(); this.renderApprovals(); this.renderSettings(); this.updateBadges(); },
+
+    updateBadges() {
+        const pending = this.data.applications.filter(a => a.status === 'pending').length;
+        document.getElementById('pendingBadge').textContent = pending;
+        document.getElementById('navPendingBadge').textContent = pending;
+        document.getElementById('navPendingBadge').style.display = pending === 0 ? 'none' : 'inline';
+        const lowItems = this.data.items.filter(it => it.stock <= it.minStock).length;
+        document.getElementById('dashPending').textContent = pending;
+        document.getElementById('dashLow').textContent = lowItems;
+        document.getElementById('dashItems').textContent = this.data.items.length;
+    },
+
+    // ----- 公开申领 -----
+    renderPublicItems() {
+        const sel = document.getElementById('pubItem');
+        sel.innerHTML = '<option value="">— 请选择 —</option>';
+        this.data.items.forEach(it => {
+            const opt = document.createElement('option');
+            opt.value = it.id;
+            opt.textContent = `${it.name} (库存: ${it.stock} ${it.unit || ''})`;
+            sel.appendChild(opt);
+        });
+        this.renderPublicDynamicFields();
+    },
+
+    renderPublicDynamicFields() {
+        const container = document.getElementById('pubDynamicFields');
+        container.innerHTML = '';
+        (this.data.settings.customFields.out || []).forEach(fname => {
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `<label>${fname}</label><input type="text" class="pub-dynamic-field" data-field="${fname}" placeholder="请输入${fname}">`;
+            container.appendChild(div);
+        });
+    },
+
+    bindPublicEvents() {
+        document.getElementById('publicApplyForm').addEventListener('submit', (e) => { e.preventDefault(); this.submitApplication(); });
+        document.getElementById('showAdminLoginBtn').addEventListener('click', () => {
+            document.getElementById('login-overlay').classList.add('active');
+            document.getElementById('loginPwd').value = '';
+            document.getElementById('loginError').style.display = 'none';
+            setTimeout(() => document.getElementById('loginPwd').focus(), 300);
+        });
+        document.getElementById('loginForm').addEventListener('submit', (e) => { e.preventDefault(); const pwd = document.getElementById('loginPwd').value; this.login(pwd); });
+        document.getElementById('closeLoginBtn').addEventListener('click', () => { document.getElementById('login-overlay').classList.remove('active'); });
+        document.getElementById('login-overlay').addEventListener('click', (e) => { if (e.target === e.currentTarget) document.getElementById('login-overlay').classList.remove('active'); });
+    },
+
+    submitApplication() {
+        const itemId = document.getElementById('pubItem').value;
+        const qty = parseInt(document.getElementById('pubQty').value);
+        const applicant = document.getElementById('pubName').value.trim();
+        const className = document.getElementById('pubClass').value.trim();
+        const purpose = document.getElementById('pubPurpose').value.trim();
+        const phone = document.getElementById('pubPhone').value.trim();
+        if (!itemId) { this.showPublicMsg('请选择物品','error'); return; }
+        if (!qty || qty < 1) { this.showPublicMsg('请输入有效数量','error'); return; }
+        if (!applicant) { this.showPublicMsg('请输入申领人姓名','error'); return; }
+        if (!purpose) { this.showPublicMsg('请填写用途说明','error'); return; }
+        const item = this.data.items.find(it => it.id === itemId);
+        if (!item) { this.showPublicMsg('物品不存在','error'); return; }
+        if (item.stock < qty) { this.showPublicMsg(`库存不足！当前库存 ${item.stock} ${item.unit || ''}`,'error'); return; }
+        const custom = {};
+        document.querySelectorAll('.pub-dynamic-field').forEach(el => { custom[el.dataset.field] = el.value.trim(); });
+        const app = { id: Date.now()+'_'+Math.random().toString(36).substr(2,4), itemId, qty, applicant, className, purpose, phone, date: new Date().toISOString().slice(0,10), status: 'pending', adminNote: '', custom };
+        this.data.applications.push(app);
+        DataService.save(this.data);
+        this.showPublicMsg('✅ 申领提交成功！请等待管理员审批。','success');
+        document.getElementById('publicApplyForm').reset();
+        document.querySelectorAll('.pub-dynamic-field').forEach(el => el.value = '');
+        this.renderPublicItems();
+        if (this.isAdmin) this.updateBadges();
+    },
+
+    showPublicMsg(msg, type) {
+        const el = document.getElementById('public-message');
+        el.textContent = msg; el.className = type; el.style.display = 'block';
+        if (type === 'success') setTimeout(() => { el.style.display = 'none'; }, 5000);
+    },
+
+    // ----- 仪表盘 -----
+    renderDashboard() {
+        const items = this.data.items, apps = this.data.applications;
+        const pending = apps.filter(a => a.status === 'pending');
+        const low = items.filter(it => it.stock <= it.minStock);
+        document.getElementById('dashItems').textContent = items.length;
+        document.getElementById('dashPending').textContent = pending.length;
+        document.getElementById('dashLow').textContent = low.length;
+        const lowContainer = document.getElementById('dashLowList');
+        if (low.length === 0) lowContainer.innerHTML = `<div class="empty-state"><i class="fas fa-check-circle" style="color:var(--success);"></i><br>一切正常</div>`;
+        else lowContainer.innerHTML = low.map(it => `<div class="list-item"><span><strong>${it.name}</strong> <span class="tag tag-low">库存 ${it.stock}</span></span><span>下限 ${it.minStock}</span></div>`).join('');
+        const recentContainer = document.getElementById('dashRecentPending');
+        if (pending.length === 0) recentContainer.innerHTML = `<div class="empty-state">暂无待审批</div>`;
+        else {
+            const show = pending.slice(0,3);
+            recentContainer.innerHTML = show.map(a => { const item = this.data.items.find(it => it.id === a.itemId); return `<div class="list-item"><span><strong>${a.applicant}</strong> 申领 ${item?.name || '已删除'} ×${a.qty}</span><span class="tag tag-pending">待审</span></div>`; }).join('');
+        }
+    },
+
+    // ----- 库存管理 -----
+    renderItems() {
+        const container = document.getElementById('itemListContainer');
+        const items = this.data.items;
+        if (items.length === 0) { container.innerHTML = `<div class="empty-state"><i class="fas fa-box-open"></i><br>暂无物品</div>`; return; }
+        container.innerHTML = items.map(it => `
+            <div class="stock-row">
+                <div class="stock-info">
+                    <div class="stock-name-row">
+                        <span class="stock-name">${it.name}</span>
+                        <span class="stock-quantity">库存：${it.stock} ${it.unit || ''}</span>
+                    </div>
+                </div>
+                <div class="stock-actions-vertical">
+                    <button class="btn btn-sm btn-outline action-btn edit-item-btn" data-id="${it.id}">修改</button>
+                    <button class="btn btn-sm btn-danger action-btn del-item-btn" data-id="${it.id}">删除</button>
+                </div>
+            </div>
+        `).join('');
+        container.querySelectorAll('.edit-item-btn').forEach(btn => btn.addEventListener('click', () => this.openEditItem(btn.dataset.id)));
+        container.querySelectorAll('.del-item-btn').forEach(btn => btn.addEventListener('click', () => this.deleteItem(btn.dataset.id)));
+    },
+
+    openEditItem(id) {
+        const item = this.data.items.find(it => it.id === id);
+        if (!item) return;
+        this._openModal('编辑物品', () => `
+            <div class="form-group"><label>名称 *</label><input type="text" id="editItemName" value="${item.name}"></div>
+            <div class="form-group"><label>分类</label><input type="text" id="editItemCategory" value="${item.category||''}"></div>
+            <div class="form-group"><label>单位</label><input type="text" id="editItemUnit" value="${item.unit||''}"></div>
+            <div class="form-group"><label>当前库存</label><input type="number" id="editItemStock" value="${item.stock}"></div>
+            <div class="form-group"><label>库存下限</label><input type="number" id="editItemMin" value="${item.minStock||0}"></div>
+            <div class="form-group"><label>库存上限</label><input type="number" id="editItemMax" value="${item.maxStock||99999}"></div>
+            <div id="editItemCustomFields"></div>
+            <div class="btn-group"><button class="btn btn-success" id="saveEditItemBtn">保存修改</button><button class="btn btn-outline" id="modalCloseBtn2">取消</button></div>
+        `, () => {
+            const container = document.getElementById('editItemCustomFields');
+            if (container) {
+                (this.data.settings.customFields.item || []).forEach(f => {
+                    container.innerHTML += `<div class="form-group"><label>${f}</label><input type="text" id="editCustom_${f}" value="${item.custom?.[f]||''}"></div>`;
+                });
+            }
+            document.getElementById('saveEditItemBtn').addEventListener('click', () => {
+                const name = document.getElementById('editItemName').value.trim();
+                if (!name) { alert('请输入名称'); return; }
+                const category = document.getElementById('editItemCategory').value.trim();
+                const unit = document.getElementById('editItemUnit').value.trim();
+                const stock = parseInt(document.getElementById('editItemStock').value) || 0;
+                const minStock = parseInt(document.getElementById('editItemMin').value) || 0;
+                const maxStock = parseInt(document.getElementById('editItemMax').value) || 99999;
+                const custom = {};
+                (this.data.settings.customFields.item || []).forEach(f => {
+                    const el = document.getElementById('editCustom_' + f);
+                    if (el) custom[f] = el.value.trim();
+                });
+                const idx = this.data.items.findIndex(it => it.id === id);
+                if (idx > -1) {
+                    this.data.items[idx] = { ...this.data.items[idx], name, category, unit, stock, minStock, maxStock, custom };
+                    DataService.save(this.data);
+                    this.closeModal();
+                    this.refreshAllAdmin();
+                }
+            });
+            document.getElementById('modalCloseBtn2')?.addEventListener('click', () => this.closeModal());
+        });
+    },
+
+    deleteItem(id) {
+        if (!confirm('确认删除此物品？')) return;
+        this.data.items = this.data.items.filter(it => it.id !== id);
+        DataService.save(this.data);
+        this.refreshAllAdmin();
+    },
+
+    openAddItem() {
+        this._openModal('新增物品', () => {
+            const fields = this.data.settings.customFields.item || [];
+            return `
+                <div class="form-group"><label>名称 *</label><input type="text" id="addItemName" placeholder="物品名称"></div>
+                <div class="form-group"><label>分类</label><input type="text" id="addItemCategory" placeholder="分类"></div>
+                <div class="form-group"><label>单位</label><input type="text" id="addItemUnit" placeholder="个/箱/瓶"></div>
+                <div class="form-group"><label>初始库存</label><input type="number" id="addItemStock" value="0"></div>
+                <div class="form-group"><label>库存下限</label><input type="number" id="addItemMin" value="5"></div>
+                <div class="form-group"><label>库存上限</label><input type="number" id="addItemMax" value="99999"></div>
+                ${fields.map(f => `<div class="form-group"><label>${f}</label><input type="text" id="addCustom_${f}" placeholder="请输入${f}"></div>`).join('')}
+                <div class="btn-group"><button class="btn btn-success" id="saveAddItemBtn">确认添加</button><button class="btn btn-outline" id="modalCloseBtn2">取消</button></div>
+            `;
+        }, () => {
+            document.getElementById('saveAddItemBtn').addEventListener('click', () => {
+                const name = document.getElementById('addItemName').value.trim();
+                if (!name) { alert('请输入名称'); return; }
+                const category = document.getElementById('addItemCategory').value.trim();
+                const unit = document.getElementById('addItemUnit').value.trim();
+                const stock = parseInt(document.getElementById('addItemStock').value) || 0;
+                const minStock = parseInt(document.getElementById('addItemMin').value) || 0;
+                const maxStock = parseInt(document.getElementById('addItemMax').value) || 99999;
+                const custom = {};
+                (this.data.settings.customFields.item || []).forEach(f => {
+                    const el = document.getElementById('addCustom_' + f);
+                    if (el) custom[f] = el.value.trim();
+                });
+                const newItem = { id: Date.now()+'_'+Math.random().toString(36).substr(2,4), name, category, unit, stock, minStock, maxStock, custom };
+                this.data.items.push(newItem);
+                DataService.save(this.data);
+                this.closeModal();
+                this.refreshAllAdmin();
+            });
+            document.getElementById('modalCloseBtn2')?.addEventListener('click', () => this.closeModal());
+        });
+    },
+
+    // ----- 入库 -----
+    renderStockIn() {
+        const sel = document.getElementById('inItem');
+        sel.innerHTML = '<option value="">— 请选择 —</option>';
+        this.data.items.forEach(it => {
+            const opt = document.createElement('option');
+            opt.value = it.id;
+            opt.textContent = `${it.name} (库存: ${it.stock} ${it.unit || ''})`;
+            sel.appendChild(opt);
+        });
+        const now = new Date();
+        const localISOTime = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+'T'+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
+        document.getElementById('inDate').value = localISOTime;
+        this.renderInDynamicFields();
+        this.renderInRecentLogs();
+        document.getElementById('stockInForm').onsubmit = (e) => { e.preventDefault(); this.submitStockIn(); };
+    },
+
+    renderInDynamicFields() {
+        const container = document.getElementById('inDynamicFields');
+        container.innerHTML = '';
+        (this.data.settings.customFields.in || []).forEach(fname => {
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `<label>${fname}</label><input type="text" class="in-dynamic-field" data-field="${fname}" placeholder="请输入${fname}">`;
+            container.appendChild(div);
+        });
+    },
+
+    renderInRecentLogs() {
+        const container = document.getElementById('inRecentLogs');
+        const logs = this.data.logs.filter(l => l.type === 'in').slice(-10).reverse();
+        if (logs.length === 0) { container.innerHTML = '<div class="empty-state">暂无入库记录</div>'; return; }
+        container.innerHTML = logs.map(l => {
+            const item = this.data.items.find(it => it.id === l.itemId);
+            const displayDate = l.date ? l.date.slice(0,10) : '';
+            return `<div class="list-item"><span><strong>${item?.name || '已删除'}</strong> +${l.qty} ${item?.unit || ''}</span><span class="text-muted">${displayDate}</span></div>`;
+        }).join('');
+    },
+
+    submitStockIn() {
+        const itemId = document.getElementById('inItem').value;
+        const qty = parseInt(document.getElementById('inQty').value);
+        const supplier = document.getElementById('inSupplier').value.trim();
+        const date = document.getElementById('inDate').value || new Date().toISOString().slice(0,16);
+        const handler = document.getElementById('inHandler').value.trim() || '管理员';
+        const note = document.getElementById('inNote').value.trim();
+        if (!itemId) { alert('请选择物品'); return; }
+        if (!qty || qty < 1) { alert('请输入有效数量'); return; }
+        const custom = {};
+        document.querySelectorAll('.in-dynamic-field').forEach(el => { custom[el.dataset.field] = el.value.trim(); });
+        const log = { id: Date.now()+'_'+Math.random().toString(36).substr(2,4), type:'in', itemId, qty, date, handler, supplier, note, custom, applicationId:null };
+        const item = this.data.items.find(it => it.id === itemId);
+        if (item) { item.stock = (item.stock || 0) + qty; } else { alert('物品不存在'); return; }
+        this.data.logs.push(log);
+        DataService.save(this.data);
+        alert('✅ 入库成功！');
+        document.getElementById('stockInForm').reset();
+        document.querySelectorAll('.in-dynamic-field').forEach(el => el.value = '');
+        this.renderStockIn();
+        this.refreshAllAdmin();
+    },
+
+    // ----- 审批 -----
+    renderApprovals() {
+        const filter = this.approvalFilter;
+        let list = this.data.applications;
+        if (filter === 'pending') list = list.filter(a => a.status === 'pending');
+        else list = list.filter(a => a.status !== 'pending');
+        list.sort((a,b) => new Date(b.date) - new Date(a.date));
+        const container = document.getElementById('approvalList');
+        if (list.length === 0) { container.innerHTML = `<div class="empty-state">${filter === 'pending' ? '🎉 暂无待审批' : '暂无已处理记录'}</div>`; return; }
+        container.innerHTML = list.map(a => {
+            const item = this.data.items.find(it => it.id === a.itemId);
+            const statusMap = { 'pending':'<span class="tag tag-pending">待审批</span>', 'approved':'<span class="tag tag-approved">已批准</span>', 'rejected':'<span class="tag tag-rejected">已拒绝</span>' };
+            const customHtml = a.custom ? Object.entries(a.custom).map(([k,v])=>`<span class="text-muted" style="font-size:12px;">${k}:${v}</span>`).join(' ') : '';
+            return `
+                <div class="application-item">
+                    <div class="app-header">
+                        <div>
+                            <div class="app-name">${a.applicant} ${a.className ? '· '+a.className : ''}</div>
+                            <div class="app-detail">申领 <strong>${item?.name || '已删除'}</strong> × ${a.qty} ${item?.unit || ''}</div>
+                            <div class="app-desc">${a.purpose} ${a.phone ? '· 📞'+a.phone : ''}</div>
+                            <div class="app-meta">${a.date} ${customHtml}</div>
+                            ${a.adminNote ? `<div style="font-size:13px;background:var(--gray-100);padding:4px 8px;border-radius:6px;margin-top:4px;">📌 ${a.adminNote}</div>` : ''}
+                        </div>
+                        <div class="app-status">${statusMap[a.status] || ''}</div>
+                    </div>
+                    ${a.status === 'pending' ? `
+                        <div class="app-actions">
+                            <button class="btn btn-sm btn-success approve-btn" data-id="${a.id}">✔ 批准</button>
+                            <button class="btn btn-sm btn-danger reject-btn" data-id="${a.id}">✘ 拒绝</button>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+        container.querySelectorAll('.approve-btn').forEach(btn => btn.addEventListener('click', () => this.approveApplication(btn.dataset.id)));
+        container.querySelectorAll('.reject-btn').forEach(btn => btn.addEventListener('click', () => this.rejectApplication(btn.dataset.id)));
+        document.getElementById('approveTabPending').onclick = () => { this.approvalFilter='pending'; document.getElementById('approveTabPending').className='btn btn-sm btn-primary'; document.getElementById('approveTabHistory').className='btn btn-sm btn-outline'; this.renderApprovals(); };
+        document.getElementById('approveTabHistory').onclick = () => { this.approvalFilter='history'; document.getElementById('approveTabHistory').className='btn btn-sm btn-primary'; document.getElementById('approveTabPending').className='btn btn-sm btn-outline'; this.renderApprovals(); };
+        document.getElementById('pendingBadge').textContent = this.data.applications.filter(a => a.status === 'pending').length;
+    },
+
+    approveApplication(id) {
+        const app = this.data.applications.find(a => a.id === id);
+        if (!app) return;
+        const item = this.data.items.find(it => it.id === app.itemId);
+        if (!item) { alert('物品不存在'); return; }
+        if (item.stock < app.qty) { alert(`库存不足！当前库存 ${item.stock} ${item.unit || ''}`); return; }
+        if (!confirm(`确认批准 ${app.applicant} 申领 ${item.name} ×${app.qty} ？`)) return;
+        item.stock -= app.qty;
+        app.status = 'approved';
+        const log = { id: Date.now()+'_'+Math.random().toString(36).substr(2,4), type:'out', itemId:app.itemId, qty:app.qty, date:new Date().toISOString().slice(0,16), handler:'管理员', applicant:app.applicant, purpose:app.purpose, note:'审批出库', custom:app.custom||{}, applicationId:app.id };
+        this.data.logs.push(log);
+        DataService.save(this.data);
+        this.refreshAllAdmin();
+        this.renderApprovals();
+        alert('✅ 已批准并出库');
+    },
+
+    rejectApplication(id) {
+        const app = this.data.applications.find(a => a.id === id);
+        if (!app) return;
+        const note = prompt('请输入拒绝原因 (可选)');
+        app.status = 'rejected';
+        app.adminNote = note || '管理员拒绝';
+        DataService.save(this.data);
+        this.refreshAllAdmin();
+        this.renderApprovals();
+        alert('已拒绝该申领');
+    },
+
+    // ----- 设置 -----
+    renderSettings() {
+        document.getElementById('changePwdForm').onsubmit = (e) => {
+            e.preventDefault();
+            const old = document.getElementById('oldPwd').value;
+            const newPwd = document.getElementById('newPwd').value;
+            if (old !== this.data.settings.adminPassword) { document.getElementById('pwdMsg').innerHTML = '<span style="color:var(--danger);">当前密码错误</span>'; return; }
+            if (newPwd.length < 4) { document.getElementById('pwdMsg').innerHTML = '<span style="color:var(--danger);">新密码至少4位</span>'; return; }
+            this.data.settings.adminPassword = newPwd;
+            DataService.save(this.data);
+            document.getElementById('pwdMsg').innerHTML = '<span style="color:var(--success);">✅ 密码更新成功</span>';
+            document.getElementById('oldPwd').value = ''; document.getElementById('newPwd').value = '';
+        };
+        this.renderFieldList('item','fieldListItems','newFieldItem','addFieldItemBtn');
+        this.renderFieldList('in','fieldListIn','newFieldIn','addFieldInBtn');
+        this.renderFieldList('out','fieldListOut','newFieldOut','addFieldOutBtn');
+        const cloud = this.data.settings.cloudConfig || {};
+        document.getElementById('cloudUrl').value = cloud.url || '';
+        document.getElementById('cloudKey').value = cloud.key || '';
+        document.getElementById('cloudSyncBtn').onclick = async () => {
+            const url = document.getElementById('cloudUrl').value.trim();
+            const key = document.getElementById('cloudKey').value.trim();
+            if (!url) { document.getElementById('cloudMsg').innerHTML = '<span style="color:var(--warning);">请填写API地址</span>'; return; }
+            this.data.settings.cloudConfig = { url, key };
+            DataService.save(this.data);
+            document.getElementById('cloudMsg').innerHTML = '<span style="color:var(--primary);">⏳ 同步中...</span>';
+            try {
+                const result = await DataService.syncToCloud({ url, key });
+                document.getElementById('cloudMsg').innerHTML = `<span style="color:var(--success);">✅ ${result.message || '同步完成'}</span>`;
+            } catch(e) {
+                document.getElementById('cloudMsg').innerHTML = `<span style="color:var(--danger);">❌ 同步失败: ${e.message}</span>`;
+            }
+        };
+    },
+
+    renderFieldList(type, containerId, inputId, btnId) {
+        const container = document.getElementById(containerId);
+        const fields = this.data.settings.customFields[type] || [];
+        container.innerHTML = fields.map(f => `<span class="field-tag">${f} <button class="del-field" data-type="${type}" data-field="${f}">&times;</button></span>`).join('');
+        container.querySelectorAll('.del-field').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const f = btn.dataset.field, t = btn.dataset.type;
+                if (!confirm(`确定要删除字段“${f}”吗？`)) return;
+                const arr = this.data.settings.customFields[t] || [];
+                this.data.settings.customFields[t] = arr.filter(x => x !== f);
+                DataService.save(this.data);
+                this.renderSettings();
+                this.refreshAllAdmin();
+            });
+        });
+        document.getElementById(btnId).onclick = () => {
+            const input = document.getElementById(inputId);
+            const val = input.value.trim();
+            if (!val) return;
+            const arr = this.data.settings.customFields[type] || [];
+            if (arr.includes(val)) { alert('字段已存在'); return; }
+            arr.push(val);
+            this.data.settings.customFields[type] = arr;
+            DataService.save(this.data);
+            input.value = '';
+            this.renderSettings();
+            this.refreshAllAdmin();
+        };
+    },
+
+    // ----- 导出功能 -----
+    exportInLogs() {
+        const logs = this.data.logs.filter(l => l.type === 'in');
+        const data = logs.map(l => {
+            const item = this.data.items.find(it => it.id === l.itemId);
+            const row = { '物品': item ? item.name : '已删除', '数量': l.qty, '供应商': l.supplier || '', '经手人': l.handler || '', '入库时间': l.date || '', '备注': l.note || '' };
+            if (l.custom) Object.keys(l.custom).forEach(k => { row[k] = l.custom[k]; });
+            return row;
+        });
+        this.downloadCSV(data, '入库记录');
+    },
+
+    exportApplications() {
+        const apps = this.data.applications;
+        const data = apps.map(a => {
+            const item = this.data.items.find(it => it.id === a.itemId);
+            const row = { '申领人': a.applicant, '班级': a.className || '', '物品': item ? item.name : '已删除', '数量': a.qty, '用途': a.purpose, '联系电话': a.phone || '', '申领日期': a.date || '', '状态': a.status === 'pending' ? '待审批' : (a.status === 'approved' ? '已批准' : '已拒绝'), '审批备注': a.adminNote || '' };
+            if (a.custom) Object.keys(a.custom).forEach(k => { row[k] = a.custom[k]; });
+            return row;
+        });
+        this.downloadCSV(data, '申领记录');
+    },
+
+    downloadCSV(data, filename) {
+        if (!data || data.length === 0) { alert('没有数据可导出'); return; }
+        const headers = Object.keys(data[0]);
+        const rows = data.map(obj => headers.map(h => {
+            let val = obj[h] !== undefined ? obj[h] : '';
+            if (typeof val === 'string') val = val.replace(/"/g, '""');
+            return `"${val}"`;
+        }).join(','));
+        const csv = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename + '.csv';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    },
+
+    // ----- 模态框 -----
+    _openModal(title, bodyFn, afterRenderFn) {
+        const overlay = document.getElementById('commonModal');
+        document.getElementById('modalTitle').textContent = title;
+        document.getElementById('modalBody').innerHTML = bodyFn();
+        overlay.classList.add('active');
+        document.getElementById('modalCloseBtn').onclick = () => this.closeModal();
+        overlay.addEventListener('click', (e) => { if (e.target === overlay) this.closeModal(); });
+        if (afterRenderFn) setTimeout(afterRenderFn, 50);
+    },
+
+    closeModal() { document.getElementById('commonModal').classList.remove('active'); },
+
+    // ----- 绑定管理事件 -----
+    bindAdminEvents() {
+        document.querySelectorAll('#adminNav .nav-item').forEach(item => {
+            item.addEventListener('click', () => { this.navigate(item.dataset.tab); });
+        });
+        document.getElementById('logoutBtn').addEventListener('click', () => { if (confirm('确认退出管理？')) this.logout(); });
+        document.getElementById('addItemBtn').addEventListener('click', () => { this.openAddItem(); });
+        document.getElementById('exportInBtn').addEventListener('click', () => this.exportInLogs());
+        document.getElementById('exportAppsBtn').addEventListener('click', () => this.exportApplications());
+        document.getElementById('approveTabPending').className = 'btn btn-sm btn-primary';
+        document.getElementById('approveTabHistory').className = 'btn btn-sm btn-outline';
+        document.getElementById('goToPublicBtn').addEventListener('click', () => {
+            if (confirm('退出管理后台并返回申领页面？')) this.logout();
+        });
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => { App.init(); window.__APP = App; });
+</script>
+</body>
+</html>
